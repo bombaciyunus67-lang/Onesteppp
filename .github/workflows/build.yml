@@ -10,9 +10,37 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract zip
+      - name: Extract OnStepX zip
         run: unzip -o OnStepX-main.zip -d onstepx_src
 
-      - name: List contents
-        run: ls -la onstepx_src
-        
+      - name: Install Arduino CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+          echo "$HOME/bin" >> $GITHUB_PATH
+
+      - name: Build firmware (.bin)
+        run: |
+          export PATH="$HOME/bin:$PATH"
+          INO_PATH=$(find onstepx_src/OnStepX-main -name "OnStepX.ino" | head -n 1)
+          if [ -z "$INO_PATH" ]; then
+            echo "OnStepX.ino bulunamadi:"
+            find onstepx_src/OnStepX-main -maxdepth 2
+            exit 1
+          fi
+          SKETCH_DIR=$(dirname "$INO_PATH")
+          arduino-cli config init
+          arduino-cli config add board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32
+          arduino-cli compile --fqbn esp32:esp32:esp32 --export-binaries "$SKETCH_DIR"
+          mkdir -p firmware_out
+          find "$SKETCH_DIR" -name "*.bin" -exec cp {} firmware_out/ \;
+          ls -lh firmware_out/
+
+      - name: Upload firmware artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: onstepx-firmware
+          path: firmware_out/*.bin
+          if-no-files-found: warn
