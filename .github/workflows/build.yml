@@ -1,0 +1,18 @@
+name: Build OnStepX
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract zip
+        run: unzip -o OnStepX-main.zip -d onstepx_src
+
+      - name: List contents
+        run: ls -la onstepx_src
+        
